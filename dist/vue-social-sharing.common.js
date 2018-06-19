@@ -1,53 +1,9 @@
 /*!
  * vue-social-sharing v2.3.3 
- * (c) 2017 nicolasbeauvais
+ * (c) 2018 nicolasbeauvais
  * Released under the MIT License.
  */
 'use strict';
-
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var Vue = _interopDefault(require('vue'));
-
-var SocialSharingNetwork = {
-  functional: true,
-
-  props: {
-    network: {
-      type: String,
-      default: ''
-    }
-  },
-
-  render: function (createElement, context) {
-    var network = context.parent._data.baseNetworks[context.props.network];
-
-    if (!network) {
-      return console.warn(("Network " + (context.props.network) + " does not exist"));
-    }
-
-    return createElement(context.parent.networkTag, {
-      staticClass: context.data.staticClass || null,
-      staticStyle: context.data.staticStyle || null,
-      class: context.data.class || null,
-      style: context.data.style || null,
-      attrs: {
-        id: context.data.attrs.id || null,
-        'data-link': network.type === 'popup'
-          ? '#share-' + context.props.network
-          : context.parent.createSharingUrl(context.props.network),
-        'data-action': network.type === 'popup' ? null : network.action
-      },
-      on: {
-        click: network.type === 'popup' ? function () {
-          context.parent.share(context.props.network);
-        } : function () {
-          context.parent.touch(context.props.network);
-        }
-      }
-    }, context.children);
-  }
-};
 
 var email = {"sharer":"mailto:?subject=@title&body=@url%0D%0A%0D%0A@description","type":"direct"};
 var facebook = {"sharer":"https://www.facebook.com/sharer/sharer.php?u=@url&title=@title&description=@description&quote=@quote","type":"popup"};
@@ -60,12 +16,11 @@ var reddit = {"sharer":"https://www.reddit.com/submit?url=@url&title=@title","ty
 var skype = {"sharer":"https://web.skype.com/share?url=@description%0D%0A@url","type":"popup"};
 var telegram = {"sharer":"https://t.me/share/url?url=@url&text=@description","type":"popup"};
 var twitter = {"sharer":"https://twitter.com/intent/tweet?text=@title&url=@url&hashtags=@hashtags@twitteruser","type":"popup"};
-var viber = {"sharer":"viber://forward?text=@url @description","type":"direct"};
 var vk = {"sharer":"https://vk.com/share.php?url=@url&title=@title&description=@description&image=@media&noparse=true","type":"popup"};
 var weibo = {"sharer":"http://service.weibo.com/share/share.php?url=@url&title=@title","type":"popup"};
 var whatsapp = {"sharer":"whatsapp://send?text=@description%0D%0A@url","type":"direct","action":"share/whatsapp/share"};
 var sms = {"sharer":"sms:?body=@url%20@description","type":"direct"};
-var BaseNetworks = {
+var Networks = {
 	email: email,
 	facebook: facebook,
 	googleplus: googleplus,
@@ -77,12 +32,55 @@ var BaseNetworks = {
 	skype: skype,
 	telegram: telegram,
 	twitter: twitter,
-	viber: viber,
 	vk: vk,
 	weibo: weibo,
 	whatsapp: whatsapp,
 	sms: sms
 };
+
+console.log("SOCIAL SHARING NETWORK...--;;");
+
+var SocialSharingNetwork = {
+  functional: true,
+
+  props: {
+    network: {
+      type: String,
+      default: ''
+    }
+  },
+
+  render: function render (createElement, context) {
+    var network = Networks[context.props.network];
+    var willrender = context.parent.willRender;
+    if (!!willrender) {
+      console.log("SOCIAL SHARING NETWORK RENDER...--;;");
+      return createElement(context.parent.networkTag, {
+        staticClass: context.data.staticClass || null,
+        staticStyle: context.data.staticStyle || null,
+        class: context.data.class || null,
+        style: context.data.style || null,
+        key: context.data.key || null,
+        attrs: {
+          id: context.data.attrs.id || null,
+          'data-link': network.type === 'popup'
+            ? '#share-' + context.props.network
+            : context.parent.createSharingUrl(context.props.network),
+          'data-action': network.type === 'popup' ? null : network.action
+        },
+        on: {
+          click: network.type === 'popup' ? function () {
+            context.parent.share(context.props.network);
+          } : function () {
+            context.parent.touch(context.props.network);
+          }
+        }
+      }, context.children);
+    }
+  }
+};
+
+console.log("SRC SOCIAL SHARING");
 
 var inBrowser = typeof window !== 'undefined';
 var $window = inBrowser ? window : null;
@@ -96,6 +94,14 @@ var SocialSharing = {
     url: {
       type: String,
       default: inBrowser ? window.location.href : ''
+    },
+    /**
+       * will render.
+       * @var bool
+     */
+    willRender: {
+      type: Boolean,
+      default: false
     },
 
     /**
@@ -178,17 +184,6 @@ var SocialSharing = {
     networkTag: {
       type: String,
       default: 'span'
-    },
-
-    /**
-     * Additional or overridden networks.
-     * Default to BaseNetworks
-     */
-    networks: {
-      type: Object,
-      default: function () {
-        return {};
-      }
     }
   },
 
@@ -198,7 +193,7 @@ var SocialSharing = {
        * Available sharing networks.
        * @param object
        */
-      baseNetworks: BaseNetworks,
+      networks: Networks,
 
       /**
        * Popup settings.
@@ -229,7 +224,7 @@ var SocialSharing = {
      * @param network Social network key.
      */
     createSharingUrl: function createSharingUrl (network) {
-      return this.baseNetworks[network].sharer
+      return this.networks[network].sharer
         .replace(/@url/g, encodeURIComponent(this.url))
         .replace(/@title/g, encodeURIComponent(this.title))
         .replace(/@description/g, encodeURIComponent(this.description))
@@ -246,9 +241,7 @@ var SocialSharing = {
      */
     share: function share (network) {
       this.openSharer(network, this.createSharingUrl(network));
-
       this.$root.$emit('social_shares_open', network, this.url);
-      this.$emit('open', network, this.url);
     },
 
     /**
@@ -258,9 +251,7 @@ var SocialSharing = {
      */
     touch: function touch (network) {
       window.open(this.createSharingUrl(network), '_self');
-
       this.$root.$emit('social_shares_open', network, this.url);
-      this.$emit('open', network, this.url);
     },
 
     /**
@@ -274,11 +265,8 @@ var SocialSharing = {
       // If a popup window already exist it will be replaced, trigger a close event.
       if (this.popup.window && this.popup.interval) {
         clearInterval(this.popup.interval);
-
         this.popup.window.close();// Force close (for Facebook)
-
         this.$root.$emit('social_shares_change', network, this.url);
-        this.$emit('change', network, this.url);
       }
 
       this.popup.window = window.open(
@@ -305,21 +293,11 @@ var SocialSharing = {
       this.popup.interval = setInterval(function () {
         if (this$1.popup.window.closed) {
           clearInterval(this$1.popup.interval);
-
           this$1.popup.window = undefined;
-
           this$1.$root.$emit('social_shares_close', network, this$1.url);
-          this$1.$emit('close', network, this$1.url);
         }
       }, 500);
     }
-  },
-
-  /**
-   * Merge base networks list with user's list
-   */
-  beforeMount: function beforeMount () {
-    this.baseNetworks = Vue.util.extend(this.baseNetworks, this.networks);
   },
 
   /**
@@ -351,6 +329,8 @@ var SocialSharing = {
     'network': SocialSharingNetwork
   }
 };
+
+console.log("00 SOCIAL SHARING INDEX");
 
 SocialSharing.version = '2.3.3';
 
