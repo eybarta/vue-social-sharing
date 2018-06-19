@@ -1,6 +1,7 @@
+console.log("SRC SOCIAL SHARING");
+
 import SocialSharingNetwork from './social-sharing-network';
-import BaseNetworks from './networks.json';
-import Vue from 'vue';
+import Networks from './networks.json';
 
 const inBrowser = typeof window !== 'undefined';
 var $window = inBrowser ? window : null;
@@ -18,6 +19,14 @@ export default {
     url: {
       type: String,
       default: inBrowser ? window.location.href : ''
+    },
+    /**
+       * will render.
+       * @var bool
+     */
+    willRender: {
+      type: Boolean,
+      default: false
     },
 
     /**
@@ -100,17 +109,6 @@ export default {
     networkTag: {
       type: String,
       default: 'span'
-    },
-
-    /**
-     * Additional or overridden networks.
-     * Default to BaseNetworks
-     */
-    networks: {
-      type: Object,
-      default: function () {
-        return {};
-      }
     }
   },
 
@@ -120,7 +118,7 @@ export default {
        * Available sharing networks.
        * @param object
        */
-      baseNetworks: BaseNetworks,
+      networks: Networks,
 
       /**
        * Popup settings.
@@ -151,7 +149,7 @@ export default {
      * @param network Social network key.
      */
     createSharingUrl (network) {
-      return this.baseNetworks[network].sharer
+      return this.networks[network].sharer
         .replace(/@url/g, encodeURIComponent(this.url))
         .replace(/@title/g, encodeURIComponent(this.title))
         .replace(/@description/g, encodeURIComponent(this.description))
@@ -168,9 +166,7 @@ export default {
      */
     share (network) {
       this.openSharer(network, this.createSharingUrl(network));
-
       this.$root.$emit('social_shares_open', network, this.url);
-      this.$emit('open', network, this.url);
     },
 
     /**
@@ -180,9 +176,7 @@ export default {
      */
     touch (network) {
       window.open(this.createSharingUrl(network), '_self');
-
       this.$root.$emit('social_shares_open', network, this.url);
-      this.$emit('open', network, this.url);
     },
 
     /**
@@ -194,11 +188,8 @@ export default {
       // If a popup window already exist it will be replaced, trigger a close event.
       if (this.popup.window && this.popup.interval) {
         clearInterval(this.popup.interval);
-
         this.popup.window.close();// Force close (for Facebook)
-
         this.$root.$emit('social_shares_change', network, this.url);
-        this.$emit('change', network, this.url);
       }
 
       this.popup.window = window.open(
@@ -225,21 +216,11 @@ export default {
       this.popup.interval = setInterval(() => {
         if (this.popup.window.closed) {
           clearInterval(this.popup.interval);
-
           this.popup.window = undefined;
-
           this.$root.$emit('social_shares_close', network, this.url);
-          this.$emit('close', network, this.url);
         }
       }, 500);
     }
-  },
-
-  /**
-   * Merge base networks list with user's list
-   */
-  beforeMount () {
-    this.baseNetworks = Vue.util.extend(this.baseNetworks, this.networks);
   },
 
   /**
